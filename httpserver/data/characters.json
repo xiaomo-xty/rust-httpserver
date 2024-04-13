@@ -1,0 +1,23 @@
+[  
+  {  
+    "name": "旅行者",  
+    "level": 50,  
+    "health": 9000.0,  
+    "element": "风",  
+    "skills": ["风涡剑", "风息激荡"]  
+  },  
+  {  
+    "name": "迪卢克",  
+    "level": 60,  
+    "health": 12000.0,  
+    "element": "火",  
+    "skills": ["炽焰斩", "黎明"]  
+  },  
+  {  
+    "name": "刻晴",  
+    "level": 55,  
+    "health": 10500.0,  
+    "element": "雷",  
+    "skills": ["天街巡游", "玉衡斩"]  
+  }  
+]
