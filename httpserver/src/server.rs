@@ -9,12 +9,28 @@ pub struct Server<'a> {
 }
 
 impl<'a> Server<'a> {
+    /**
+     * 接受一个socket地址，返回一个Server
+     * 
+     ## Example
+     ```rust
+     let server = Server::new("localhost:3000");
+     ```
+     */
     pub fn new(socket_addr: &'a str) -> Self {
         Server {
             socket_addr
         }
     }
+    
 
+    /**
+     * 启动server，开始监听`socket_addr`并处理请求
+     ## Example
+     ```rust
+     server.run();
+     ```
+     */
     pub fn run(&self) {
         let connection_listener = TcpListener::bind(self.socket_addr).unwrap();
         println!("Running on {}", self.socket_addr);

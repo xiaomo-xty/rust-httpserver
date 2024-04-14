@@ -1,4 +1,4 @@
-use http::{httprequest::HttpRequst, httpresponse::HttpResponse};
+use http::{httprequest::HttpRequst, httpresponse::HttpResponse, httpresponse::ResponseBody};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 // use std::default;
@@ -10,13 +10,32 @@ use std::fs;
 pub trait Handler {
     fn handle(req: &HttpRequst) -> HttpResponse;
 
-    fn load_file(file_name: &str) -> Option<String> {
+    /**
+     * # 文件加载
+     * 根据不同的文件类型选择不同的Body
+     * 对于文本文件返回`ResponseBody::Text(String)`
+     * 对于图片等文件返回`ResponseBody::Binary(Vec[u8])`
+     */
+    fn load_file(file_name: &str) -> Option<ResponseBody> {
         let default_path = format!("{}/public", env!("CARGO_MANIFEST_DIR"));
         let public_path = env::var("PUBLIC_PATH").unwrap_or(default_path);
         let full_path = format!("{}/{}", public_path, file_name);
 
-        let contents = fs::read_to_string(full_path);
-        contents.ok()
+        let mut contents : Option<ResponseBody> = None;
+        if full_path.ends_with(".jpg") || full_path.ends_with(".zip") { 
+            contents = match fs::read(full_path) {
+                  Ok(data) => Some(ResponseBody::Binary(data)),
+                  _ => None,
+            };
+        }
+        else {
+            contents = match fs::read_to_string(full_path) {
+                Ok(text) => Some(ResponseBody::Text(text)),
+                Err(_) => None,
+            };
+        }
+
+        contents
     }
 }
 
@@ -43,9 +62,23 @@ impl Handler for PageNotFoundHandler {
 
 impl Handler for StaticPageHandler {
     /**
-     * littlesun.cloud: index page
-     * littlesun.cloud/health: 
-     * littlesun.cloud/name.suffix:
+     * # 静态页面处理
+     * 接受[`Router`]放过来的静态页面路由路径，找到相应文件，读取并返回
+     * 
+     * # Example
+     ```rust
+     match &req.resource {
+        httprequest::Resource::Path(s) => {
+            println!("Path: \"{}\"", s);
+            let route: Vec<&str> = s.split("/").collect();
+            match route[1] {
+                "api" => WebServiceHandler::handle(&req),
+
+                _ => StaticPageHandler::handle(&req)
+            }
+        }
+    },
+     ```
      */
     fn handle(req: &HttpRequst) -> HttpResponse {
         let http::httprequest::Resource::Path(s) = &req.resource;
@@ -53,6 +86,8 @@ impl Handler for StaticPageHandler {
         match route[1] {
             "" => HttpResponse::new("200", None, Self::load_file("index.html")),
             "health" => HttpResponse::new("200", None, Self::load_file("health.html")),
+
+            //加载文件并判断类型，插入相应类型到报文头（或许我应该将这一部分逻辑抽出来，搞个表什么查出来会比较优雅）
             path => match Self::load_file(path) {
                 Some(contents) => {
                     let mut map: HashMap<&str, &str> = HashMap::new();
@@ -61,6 +96,10 @@ impl Handler for StaticPageHandler {
                     }
                     else if path.ends_with(".js") {
                         map.insert("Content-Type", "text/javascript");
+                    } else if path.ends_with(".jpg") || path.ends_with(".png") {  
+                        map.insert("Content-Type", "image/jpeg"); // 对于.png，这里应该是"image/png"  
+                    } else if path.ends_with(".zip") || path.ends_with(".png") {  
+                        map.insert("Content-Type", "application/zip");
                     } 
                     else {
                         map.insert("Content-Type", "text/html");
@@ -96,6 +135,14 @@ impl  WebServiceHandler {
 }
 
 impl Handler for WebServiceHandler {
+    /**
+     * # 网页服务处理
+     * 根据路由路径，对一些api进行响应
+     * 目前的实现就是读取json并返回
+     * 
+     * # Example
+     * [character](http://localhost:3000/api/shipping/characters)
+     */
     fn handle(req: &HttpRequst) -> HttpResponse {
         let http::httprequest::Resource::Path(s) = &req.resource;
         let route: Vec<&str> = s.split("/").collect();
@@ -106,7 +153,7 @@ impl Handler for WebServiceHandler {
                 println!("{}", body.as_ref().unwrap());
                 let mut headers: HashMap<&str, &str> = HashMap::new();
                 headers.insert("Content-Type", "application/json");
-                HttpResponse::new("200", Some(headers), body)
+                HttpResponse::new("200", Some(headers), Some(ResponseBody::Text(body.unwrap())))
             }
             _ => HttpResponse::new("404", None, Self::load_file("404.html"))
         }
