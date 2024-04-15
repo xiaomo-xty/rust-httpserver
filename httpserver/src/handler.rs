@@ -4,7 +4,10 @@ use std::collections::HashMap;
 // use std::default;
 use std::env;
 use std::fs;
+// use std::path;
+use std::path::PathBuf;
 // use std::hash::Hash;
+
 
 
 pub trait Handler {
@@ -21,20 +24,23 @@ pub trait Handler {
         let public_path = env::var("PUBLIC_PATH").unwrap_or(default_path);
         let full_path = format!("{}/{}", public_path, file_name);
 
-        let mut contents : Option<ResponseBody> = None;
-        if full_path.ends_with(".jpg") || full_path.ends_with(".zip") { 
-            contents = match fs::read(full_path) {
-                  Ok(data) => Some(ResponseBody::Binary(data)),
-                  _ => None,
-            };
-        }
-        else {
-            contents = match fs::read_to_string(full_path) {
-                Ok(text) => Some(ResponseBody::Text(text)),
-                Err(_) => None,
-            };
-        }
-
+        let contents : Option<ResponseBody> = 
+        if let Some(ext) = PathBuf::from(full_path.clone()).extension().and_then(|ext| ext.to_str()) {
+            match ext {  
+                "html" | "css" | "js" |"xml" |"json" |"txt" => {
+                    match fs::read_to_string(full_path) {
+                        Ok(txt) => Some(ResponseBody::Text(txt)),
+                        _ => None,
+                    }
+                },
+                _ => {
+                    match fs::read(full_path) {
+                        Ok(data) => Some(ResponseBody::Binary(data)),
+                        _ => None,
+                  }
+                },
+            }
+        } else {None};
         contents
     }
 }
@@ -83,32 +89,47 @@ impl Handler for StaticPageHandler {
     fn handle(req: &HttpRequst) -> HttpResponse {
         let http::httprequest::Resource::Path(s) = &req.resource;
         let route: Vec<&str> = s.split("/").collect();
-        match route[1] {
-            "" => HttpResponse::new("200", None, Self::load_file("index.html")),
-            "health" => HttpResponse::new("200", None, Self::load_file("health.html")),
+        let mut file_name = match route[1] {
+            "" => "index".to_string(),
+            file_name => file_name.to_string(),
+        };
 
-            //加载文件并判断类型，插入相应类型到报文头（或许我应该将这一部分逻辑抽出来，搞个表什么查出来会比较优雅）
-            path => match Self::load_file(path) {
-                Some(contents) => {
-                    let mut map: HashMap<&str, &str> = HashMap::new();
-                    if path.ends_with(".css"){
-                        map.insert("Content-Type", "text/css");
-                    }
-                    else if path.ends_with(".js") {
-                        map.insert("Content-Type", "text/javascript");
-                    } else if path.ends_with(".jpg") || path.ends_with(".png") {  
-                        map.insert("Content-Type", "image/jpeg"); // 对于.png，这里应该是"image/png"  
-                    } else if path.ends_with(".zip") || path.ends_with(".png") {  
-                        map.insert("Content-Type", "application/zip");
-                    } 
-                    else {
-                        map.insert("Content-Type", "text/html");
-                    }
+        let mut headers = HashMap::new();
+        let mut content_type = "text/html";
 
-                    HttpResponse::new("200", Some(map), Some(contents))
-                }
-                None => HttpResponse::new("404", None, Self::load_file("404.html"))
-            }
+
+        let binding = PathBuf::from(file_name.clone());
+        if binding.extension().is_none() {
+            file_name.push_str(".html");
+        }
+        // 尝试从文件名获取扩展名，并设置适当的Content-Type  
+        else if let Some(ext) = binding.extension().and_then(|ext| ext.to_str()) {  
+            match ext {  
+                "html" => content_type = "text/html",
+                "css" => content_type = "text/css",  
+                "js" => content_type = "text/javascript",  
+                "xml" => content_type = "text/xml",
+                "json" => content_type = "text/json",
+                "txt" => content_type = "text/plain",  
+                "gif" => content_type = "image/gif",  
+                "png" => content_type = "image/png",  
+                "jpg" | "jpeg" => content_type = "image/jpeg",  
+                "zip" => content_type = "application/zip",
+                "mp3" => content_type = "application/map3", 
+                "mp4" => content_type = "application/map4", 
+                _ => {  
+                    // 如果不支持的扩展名，则重定向到nosupport页面  
+                    file_name = "nosupport.html".to_string();  
+                    content_type = "text/html";  
+                }  
+            }  
+        }  
+        
+        headers.insert("Content-Type", content_type);  
+
+        match Self::load_file(&file_name) {
+            None => HttpResponse::new("404", None, Self::load_file("404.html")),
+            Some(body) => HttpResponse::new("200", Some(headers), Some(body)),
         }
     }
 }
@@ -121,7 +142,7 @@ impl  WebServiceHandler {
         let default_path = format!("{}/data", env!("CARGO_MANIFEST_DIR"));
         let data_path = env::var("DATA_PATH").unwrap_or(default_path);
         let full_path = format!("{}/{}", data_path, "characters.json");
-        println!("full_path:{}", full_path);
+        // println!("full_path:{}", full_path);
         let json_contents = fs::read_to_string(full_path);
         let orders: Vec<OrderStatus> =
             serde_json::from_str(json_contents
