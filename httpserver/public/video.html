@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鼠标悬浮渐变切换视频背景</title>
+  <style>
+    body, html {  
+        height: 100%;  
+        margin: 10px;  
+        padding: 0;  
+        overflow: hidden; /* 隐藏滚动条 */  
+    } 
+    .video-box {
+        height: 100vh; /* 视口高度的100% */  
+        width: 100vw; /* 视口宽度的100% */  
+        display: flex; /* 弹性布局，可以根据需要调整 */  
+        align-items: center; /* 垂直居中 */  
+        justify-content: center; /* 水平居中 */  
+        background-color: transparent; /* 背景色，可以根据需要更改 */  
+        color: white; /* 文字颜色，可以根据需要更改 */  
+        /* 其他的样式，比如字体、阴影等 */  
+    }
+
+    .video-box>div {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      /* background-color: rgba(0, 0, 0, .3); */
+      color: #fff;
+      border: 1px solid #ededed;
+      border-right: 0;
+    }
+
+    .video-box video {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      right: 0;
+      z-index: -1;
+    }
+
+    .video-box .item:not(:first-child) video {
+      opacity: 0;
+    }
+
+    .video-box .active {
+      animation: show_ 0.7s linear 1 forwards;
+    }
+
+    .video-box .next {
+      animation: hidden_ 0.7s linear 1 forwards;
+    }
+
+
+
+    @keyframes show_ {
+      0% {
+        opacity: 0;
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes hidden_ {
+      0% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="video-box">
+    <div class="item">
+      <span>1</span>
+      <video id="videos0" autoplay muted loop>
+        <source src="https://cn-ahwh-ct-01-06.bilivideo.com/upgcxcode/19/09/1405160919/1405160919-1-16.mp4?e=ig8euxZM2rNcNbRVhwdVhwdlhWdVhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&uipk=5&nbs=1&deadline=1713111959&gen=playurlv2&os=bcache&oi=730790904&trid=00006ebd39f229cd4292933409c5c4f5df78h&mid=0&platform=html5&upsig=99ff6568325c5dbc18820250b088e114&uparams=e,uipk,nbs,deadline,gen,os,oi,trid,mid,platform&cdnid=63406&bvc=vod&nettype=0&f=h_0_0&bw=50116&logo=80000000" type="video/mp4">
+      </video>
+    </div>
+    <div class="item">
+      <span>2</span>
+      <video id="videos1" autoplay muted loop>
+        <source src="https://upos-sz-mirror08c.bilivideo.com/upgcxcode/44/02/796760244/796760244_nb3-1-16.mp4?e=ig8euxZM2rNcNbRVhwdVhwdlhWdVhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&uipk=5&nbs=1&deadline=1713112897&gen=playurlv2&os=08cbv&oi=730790904&trid=292b04b146434209818ae87ca1da0b80h&mid=0&platform=html5&upsig=684ce15b21fd4c116961920d5576ff98&uparams=e,uipk,nbs,deadline,gen,os,oi,trid,mid,platform&bvc=vod&nettype=0&f=h_0_0&bw=53789&logo=80000000" type="video/mp4">
+      </video>
+    </div>
+    <div class="item">
+      <span>3</span>
+      <video id="videos2" autoplay muted loop>
+        <source src="https://cn-hljheb-ct-01-03.bilivideo.com/upgcxcode/68/46/1415664668/1415664668-1-16.mp4?e=ig8euxZM2rNcNbRVhwdVhwdlhWdVhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&uipk=5&nbs=1&deadline=1713111870&gen=playurlv2&os=bcache&oi=730790904&trid=000027d7352c96974a5cba8d7619eb70f5ceh&mid=0&platform=html5&upsig=a5a6e02824b5f9dc43792a3ac0850fd8&uparams=e,uipk,nbs,deadline,gen,os,oi,trid,mid,platform&cdnid=3842&bvc=vod&nettype=0&f=h_0_0&bw=32614&logo=80000000" type="video/mp4">
+      </video>
+    </div>
+  </div>
+  <script src="https://www.jq22.com/jquery/jquery-1.10.2.js"></script>
+  <script>
+    var box = $(".video-box")
+    var nextItem = 0
+    box.delegate(".item", "mouseover", function (e) {
+      e.stopPropagation()
+      $(this).find("span").css("transform", "scale(5)")
+      if (nextItem != $(this).index()) {
+        $(".video-box .item").find("video").removeClass("next")
+        $(".video-box .item").find("video").removeClass("active")
+        $(".video-box .item").eq(nextItem).find("video").addClass("next")
+        $(this).find("video").addClass("active")
+        // $(this).find("video").prop("muted", false);
+        nextItem = $(this).index()
+      }
+      $("#video" + $(this).index()).load()
+    })
+    $(".video-box .item").on("mouseleave", function () {
+      $(this).find("span").css("transform", "scale(1)")
+    })
+    $(".video-box").on("mouseleave", function () {
+    $(".video-box .item").find("video").removeClass("next")
+    $(".video-box .item").find("video").removeClass("active")
+    // $(".video-box .item").find("video").prop("muted", true)
+    if (nextItem != 0) {
+        $(".video-box .item").eq(nextItem).find("video").addClass("next")
+        $(".video-box .item").eq(0).find("video").addClass("active")
+    nextItem = 0
+    } else {
+        $(".video-box .item").eq(0).find("video").css("opacity", "1")
+        // $(".video-box .item").eq(0).find("video").prop("muted", false)
+    }
+    })
+  </script>
+
+</body>
+
+</html>
